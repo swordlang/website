@@ -201,7 +201,9 @@ function render(page) {
 			body.push(rewriteProse(src[i], page));
 			continue;
 		}
-		body.push(src[i]);
+		// The grammar's EBNF has no highlighter; said outright, it is shown as
+		// the plain text it would have fallen back to anyway.
+		body.push(src[i].replace(/^(`{3,}|~{3,})ebnf\s*$/, '$1text'));
 		// A fence followed by prose is the one that closed the block.
 		if (/^(`{3,}|~{3,})\s*$/.test(src[i]) && isProse.has(i + 1)) {
 			const m = markers(src, i + 1);

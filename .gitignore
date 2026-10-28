@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.astro/
+.sword/
+src/content/docs/
+.DS_Store
+.idea/

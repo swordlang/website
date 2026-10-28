@@ -1,0 +1,113 @@
+/* The look approved for the site: graphite on near-white, one forge-orange
+   accent, and code that is dark in both modes. Starlight's own rules sit in
+   cascade layers, so these, outside any layer, win without !important. */
+
+:root {
+	--sl-font: Inter, system-ui, sans-serif;
+	--sl-font-mono: 'JetBrains Mono', ui-monospace, monospace;
+	--sl-line-height: 1.7;
+
+	--sl-color-white: #f2f3f5;
+	--sl-color-gray-1: #e6e8ec;
+	--sl-color-gray-2: #c9cdd3;
+	--sl-color-gray-3: #9aa0aa;
+	--sl-color-gray-4: #6b717c;
+	--sl-color-gray-5: #2a2d35;
+	--sl-color-gray-6: #16181c;
+	--sl-color-black: #0e0f12;
+	--sl-color-accent-low: #3a1f14;
+	--sl-color-accent: #f0a27a;
+	--sl-color-accent-high: #f7c9ae;
+	--sl-color-bg-nav: #0e0f12;
+	--sl-color-bg-sidebar: #0e0f12;
+	--sl-color-hairline: #23262d;
+	--sl-color-hairline-light: #2a2d35;
+
+	--sw-current-bg: #3a1f14;
+	--sw-current-fg: #f7c9ae;
+	--sw-code-bg: #121418;
+	--sw-code-border: #23262d;
+}
+
+:root[data-theme='light'] {
+	--sl-color-white: #15171c;
+	--sl-color-gray-1: #24272e;
+	--sl-color-gray-2: #3b404a;
+	--sl-color-gray-3: #5b616e;
+	--sl-color-gray-4: #8b929c;
+	--sl-color-gray-5: #e4e5e8;
+	--sl-color-gray-6: #f2f2f0;
+	--sl-color-gray-7: #fafaf9;
+	--sl-color-black: #ffffff;
+	--sl-color-accent-low: #fbede6;
+	--sl-color-accent: #b9461a;
+	--sl-color-accent-high: #8f3412;
+	--sl-color-bg-nav: #ffffff;
+	--sl-color-bg-sidebar: #ffffff;
+	--sl-color-bg-inline-code: #f2f2f0;
+	--sl-color-hairline: #e4e5e8;
+	--sl-color-hairline-light: #e4e5e8;
+
+	--sw-current-bg: #fbede6;
+	--sw-current-fg: #8f3412;
+}
+
+/* The wordmark is lower case beside the blade, as in the logo; the title
+   everywhere else (tabs, search results) stays "Sword". */
+.site-title {
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	text-transform: lowercase;
+	color: var(--sl-color-white);
+}
+
+h1,
+.sl-markdown-content :is(h2, h3) {
+	letter-spacing: -0.025em;
+	font-weight: 700;
+}
+h1#_top {
+	letter-spacing: -0.03em;
+}
+
+.sidebar-content a[aria-current='page'],
+.sidebar-content a[aria-current='page']:hover,
+.sidebar-content a[aria-current='page']:focus {
+	background: var(--sw-current-bg);
+	color: var(--sw-current-fg);
+	font-weight: 600;
+}
+
+/* What tests/docs.sh holds an example to, attached under the example. */
+.sl-markdown-content .expressive-code:has(+ .sw-run) :is(.frame, pre) {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+}
+.sl-markdown-content .sw-run {
+	margin-top: 0;
+	padding: 0.75rem 1.25rem;
+	background: var(--sw-code-bg);
+	color: #e6e8ec;
+	border: 1px solid var(--sw-code-border);
+	border-top: 0;
+	border-radius: 0 0 10px 10px;
+	font: 0.84375rem/1.65 var(--__sl-font-mono);
+	white-space: pre;
+	overflow-x: auto;
+}
+.sl-markdown-content .sw-run::before {
+	content: attr(data-label);
+	display: block;
+	margin-bottom: 0.5rem;
+	padding-left: 1.4rem;
+	color: #8b929c;
+	font-size: 0.78rem;
+	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A6D38F' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")
+		no-repeat 0 50% / 0.9rem;
+}
+.sl-markdown-content .sw-run-quiet {
+	padding-block: 0.6rem;
+}
+.sl-markdown-content .sw-run-quiet::before {
+	margin-bottom: 0;
+}

@@ -1,0 +1,46 @@
+---
+// The site's sections, beside the GitHub link. Starlight hides this corner
+// on narrow screens, where the sidebar menu already lists everything.
+import Default from '@astrojs/starlight/components/SocialIcons.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const here = Astro.url.pathname.slice(base.length).split('/')[0];
+const sections = [
+	{ label: 'Learn', href: 'tour/', pages: ['tour', 'why', 'install'] },
+	{ label: 'Guides', href: 'concurrency/', pages: ['concurrency', 'http', 'testing'] },
+	{ label: 'Reference', href: 'reference/', pages: ['reference', 'grammar'] },
+	{ label: 'Roadmap', href: 'roadmap/', pages: ['roadmap', 'changelog'] },
+];
+---
+
+<nav aria-label="Sections" class="sw-sections">
+	{
+		sections.map((s) => (
+			<a href={base + s.href} aria-current={s.pages.includes(here) ? 'true' : undefined}>
+				{s.label}
+			</a>
+		))
+	}
+</nav>
+<Default />
+
+<style>
+	.sw-sections {
+		display: flex;
+		gap: 1.25rem;
+		margin-inline-end: 0.5rem;
+	}
+	.sw-sections a {
+		color: var(--sl-color-gray-2);
+		font-size: var(--sl-text-sm);
+		font-weight: 500;
+		text-decoration: none;
+	}
+	.sw-sections a:hover {
+		color: var(--sl-color-white);
+	}
+	.sw-sections a[aria-current] {
+		color: var(--sl-color-white);
+		font-weight: 600;
+	}
+</style>

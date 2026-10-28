@@ -19,6 +19,7 @@ export default defineConfig({
 			logo: { light: './src/assets/logo.svg', dark: './src/assets/logo-dark.svg' },
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/swordlang/sword' }],
 			sidebar: site.sidebar,
+			components: { SocialIcons: './src/components/SocialIcons.astro' },
 			customCss: [
 				'@fontsource/inter/400.css',
 				'@fontsource/inter/500.css',

@@ -232,26 +232,46 @@ for (const doc of docs.values()) {
 	}
 }
 
+// The tour has no parts of its own; these exist only so that its twenty-odd
+// sections are not one flat list. A section the tour gains that is not named
+// here goes in the last part rather than vanishing.
+const tourParts = [
+	['Basics', ['Running a program', 'Values', 'Functions', 'Control flow', 'Arrays and slices', 'Strings']],
+	['Data and errors', ['Structs', 'Pointers and optionals', 'Enums', 'Errors', 'defer']],
+	['Abstraction', ['Methods and interfaces', 'Function values', 'Generics']],
+	['Memory, packages and tasks', ['Memory', 'Packages', 'Tasks', 'Channels']],
+	['Beyond the program', ['The outside world', 'Build modes', 'Looking inside', 'Testing', 'Where to go next']],
+];
+
+function tourItems(doc) {
+	const [intro, ...sections] = doc.pages;
+	const parts = tourParts.map(([label]) => ({ label, collapsed: true, items: [] }));
+	for (const pg of sections) {
+		const at = tourParts.findIndex(([, titles]) => titles.includes(pg.title));
+		parts[at === -1 ? parts.length - 1 : at].items.push({ label: pg.title, slug: pg.slug });
+	}
+	return [{ label: 'Introduction', slug: intro.slug }, ...parts.filter((p) => p.items.length)];
+}
+
 // The sidebar, in reading order. A page the language adds that is not named
-// here still appears, under "More", rather than being left unreachable.
+// here still appears, under "More", rather than being left unreachable; the
+// README is the home page, reached from the logo.
 const groups = [
-	['Start here', [['README.md', 'Overview'], ['docs/why.md'], ['docs/install.md', 'Install']]],
-	['A tour of Sword', [['docs/tour.md', 'Introduction', true]]],
+	['Start here', [['docs/why.md'], ['docs/install.md', 'Install']]],
+	['A tour of Sword', [['docs/tour.md']]],
 	['Guides', [['docs/concurrency.md'], ['docs/http.md', 'HTTP servers'], ['docs/testing.md']]],
 	['Reference', [['docs/reference.md', 'Language reference'], ['docs/grammar.md']]],
 	['Project', [['docs/roadmap.md'], ['CHANGELOG.md', 'Changelog']]],
 ];
-const placed = new Set();
+const placed = new Set(['README.md']);
 const sidebar = groups.map(([label, entries]) => ({
 	label,
-	items: entries.flatMap(([file, name, expand]) => {
+	items: entries.flatMap(([file, name]) => {
 		const doc = docs.get(file);
 		if (!doc) return [];
 		placed.add(file);
-		const [first, ...rest] = doc.pages;
-		const items = [{ label: name ?? doc.title, slug: first.slug }];
-		if (expand) items.push(...rest.map((pg) => ({ label: pg.title, slug: pg.slug })));
-		return items;
+		if (file === 'docs/tour.md') return tourItems(doc);
+		return [{ label: name ?? doc.title, slug: doc.pages[0].slug }];
 	}),
 }));
 const more = [...docs.values()].filter((d) => !placed.has(d.file));

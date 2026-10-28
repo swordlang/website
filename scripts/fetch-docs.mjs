@@ -1,0 +1,269 @@
+// Turns the documentation of swordlang/sword into this site's pages.
+//
+// The text is never copied into this repository: it is read from a checkout of
+// the language at SWORD_REF (default main), or from the directory SWORD_DIR
+// points at, which is how a change to the docs is previewed before it is
+// pushed. What it writes, src/content/docs/ and .sword/site.json, is generated
+// on every build and ignored by git.
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import GithubSlugger from 'github-slugger';
+
+const root = path.resolve(import.meta.dirname, '..');
+const ref = process.env.SWORD_REF || 'main';
+const repo = 'https://github.com/swordlang/sword';
+const state = path.join(root, '.sword');
+const out = path.join(root, 'src/content/docs');
+
+function git(cwd, ...args) {
+	return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }).trim();
+}
+
+let dir = process.env.SWORD_DIR && path.resolve(process.env.SWORD_DIR);
+if (!dir) {
+	dir = path.join(state, ref.replace(/[^A-Za-z0-9._-]/g, '_'));
+	if (fs.existsSync(path.join(dir, '.git'))) {
+		git(dir, 'fetch', '-q', '--depth=1', 'origin', ref);
+		git(dir, 'checkout', '-q', '--detach', 'FETCH_HEAD');
+	} else {
+		fs.mkdirSync(state, { recursive: true });
+		git(state, 'clone', '-q', '--depth=1', '--branch', ref, `${repo}.git`, dir);
+	}
+}
+const read = (file) => fs.readFileSync(path.join(dir, file), 'utf8');
+
+const versionH = read('src/version.h');
+const version = versionH.match(/SWORD_VERSION "([^"]+)"/)[1];
+const releaseName = versionH.match(/SWORD_RELEASE_NAME "([^"]+)"/)[1];
+
+// Only what git tracks is published: a draft lying in a working tree is not
+// documentation yet, and the design notes kept beside the docs never are.
+const files = git(dir, 'ls-files', 'README.md', 'CHANGELOG.md', 'docs/*.md').split('\n').filter(Boolean);
+
+function slugOf(file) {
+	if (file === 'README.md') return '';
+	if (file === 'CHANGELOG.md') return 'changelog';
+	return file.replace(/^docs\//, '').replace(/\.md$/, '');
+}
+
+// The text a heading is slugged from, as GitHub and Astro see it once rendered.
+function headingText(md) {
+	return md
+		.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+		.replace(/`+/g, '')
+		.replace(/(\*\*|__|\*|_)(\S[\s\S]*?)\1/g, '$2')
+		.trim();
+}
+
+// Lines outside fenced code, with the index of each, so that headings and
+// links inside an example are left alone.
+function* prose(lines) {
+	let fence = null;
+	for (let i = 0; i < lines.length; i++) {
+		const m = lines[i].match(/^(`{3,}|~{3,})/);
+		if (m) {
+			if (!fence) fence = m[1];
+			else if (lines[i].startsWith(fence) && lines[i].trim() === fence) fence = null;
+			continue;
+		}
+		if (!fence) yield i;
+	}
+}
+
+// Splits a document into its title and the pages it becomes. The tour is read
+// a section at a time, so each `##` of it is a page of its own; every other
+// document is one page with its own table of contents.
+function paginate(file) {
+	const lines = read(file).split('\n');
+	let title = null;
+	const heads = [];
+	for (const i of prose(lines)) {
+		const m = lines[i].match(/^(#{1,6})\s+(.*?)\s*#*\s*$/);
+		if (!m) continue;
+		if (m[1].length === 1 && title === null) title = { line: i, text: headingText(m[2]) };
+		else heads.push({ line: i, depth: m[1].length, text: headingText(m[2]) });
+	}
+	if (!title) throw new Error(`${file}: no "# " title`);
+	lines.splice(title.line, 1);
+	for (const h of heads) if (h.line > title.line) h.line--;
+
+	const slug = slugOf(file);
+	const split = file === 'docs/tour.md';
+	const cuts = split ? heads.filter((h) => h.depth === 2) : [];
+	const pages = [];
+	const pageSlugger = new GithubSlugger();
+	const starts = [0, ...cuts.map((h) => h.line)];
+	for (let p = 0; p < starts.length; p++) {
+		const from = starts[p];
+		const to = p + 1 < starts.length ? starts[p + 1] : lines.length;
+		const cut = p > 0 ? cuts[p - 1] : null;
+		pages.push({
+			file,
+			slug: cut ? `${slug}/${pageSlugger.slug(cut.text)}` : slug,
+			title: cut ? cut.text : title.text,
+			lines: lines.slice(cut ? from + 1 : from, to),
+			start: from,
+		});
+	}
+
+	// Where each heading of the whole document ended up: a link written as
+	// tour.md#tasks has to find the page that `## Tasks` became.
+	const anchors = new Map();
+	const docSlugger = new GithubSlugger();
+	docSlugger.slug(title.text);
+	const perPage = new Map(pages.map((pg) => [pg, new GithubSlugger()]));
+	for (const h of heads) {
+		const page = pages.findLast((pg) => pg.start <= h.line);
+		const id = docSlugger.slug(h.text);
+		const isCut = split && h.depth === 2;
+		anchors.set(id, { slug: page.slug, id: isCut ? '' : perPage.get(page).slug(h.text) });
+	}
+	return { file, title: title.text, pages, anchors };
+}
+
+const docs = new Map(files.map((f) => [f, paginate(f)]));
+
+function href(from, file, anchor) {
+	const doc = docs.get(file);
+	let slug = doc.pages[0].slug;
+	let id = anchor;
+	if (anchor && doc.anchors.has(anchor)) ({ slug, id } = doc.anchors.get(anchor));
+	const rel = path.posix.relative(`/${from}`, `/${slug}`);
+	const where = rel === '' ? '' : `${rel}/`;
+	if (!where && !id) return './';
+	return `${where}${id ? `#${id}` : ''}`;
+}
+
+function rewriteLinks(text, page) {
+	const base = path.posix.dirname(page.file);
+	return text.replace(/\]\(([^()\s]+)\)/g, (whole, target) => {
+		if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith('#') || target.startsWith('/')) return whole;
+		const [p, anchor = ''] = target.split('#');
+		const file = path.posix.normalize(path.posix.join(base, p));
+		if (docs.has(file)) return `](${href(page.slug, file, anchor)})`;
+		return `](${repo}/blob/${ref}/${file}${anchor ? `#${anchor}` : ''})`;
+	});
+}
+
+// A link inside `code` is code, not a link.
+function rewriteProse(line, page) {
+	let result = '';
+	let last = 0;
+	for (const m of line.matchAll(/(`+)[\s\S]*?\1/g)) {
+		result += rewriteLinks(line.slice(last, m.index), page) + m[0];
+		last = m.index + m[0].length;
+	}
+	return result + rewriteLinks(line.slice(last), page);
+}
+
+const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// tests/docs.sh holds a program followed by one of these markers to what it
+// says, on every change to the language, so the reader is told so. The
+// markers themselves are HTML comments and would show nothing.
+function markers(lines, i) {
+	let prints = null;
+	let exits = null;
+	let j = i;
+	for (;;) {
+		const e = lines[j]?.match(/^<!-- exits: (\d+) -->$/);
+		if (e) {
+			exits = e[1];
+			j++;
+			continue;
+		}
+		if (lines[j] === '<!-- prints:') {
+			const end = lines.indexOf('-->', j);
+			prints = lines.slice(j + 1, end).join('\n');
+			j = end + 1;
+			continue;
+		}
+		break;
+	}
+	if (prints === null && exits === null) return null;
+	let label = 'Checked on every change';
+	if (prints !== null) label += exits && exits !== '0' ? ` · prints this, exits with ${exits}` : ' · prints';
+	else label += ` · exits with ${exits}`;
+	const html =
+		prints === null
+			? `<pre class="sw-run sw-run-quiet" data-label="${label}"></pre>`
+			: `<pre class="sw-run" data-label="${label}">${escape(prints)}</pre>`;
+	return { html, next: j };
+}
+
+function render(page) {
+	const src = page.lines;
+	const body = [];
+	const isProse = new Set(prose(src));
+	for (let i = 0; i < src.length; i++) {
+		if (isProse.has(i)) {
+			body.push(rewriteProse(src[i], page));
+			continue;
+		}
+		body.push(src[i]);
+		// A fence followed by prose is the one that closed the block.
+		if (/^(`{3,}|~{3,})\s*$/.test(src[i]) && isProse.has(i + 1)) {
+			const m = markers(src, i + 1);
+			if (m) {
+				body.push(m.html);
+				i = m.next - 1;
+			}
+		}
+	}
+	const front = [
+		'---',
+		`title: ${JSON.stringify(page.title)}`,
+		`editUrl: ${JSON.stringify(`${repo}/edit/develop/${page.file}`)}`,
+		'---',
+		'',
+	];
+	return front.join('\n') + body.join('\n').replace(/^\n+/, '');
+}
+
+fs.rmSync(out, { recursive: true, force: true });
+for (const doc of docs.values()) {
+	for (const page of doc.pages) {
+		const target = path.join(out, page.slug === '' ? 'index.md' : `${page.slug}.md`);
+		fs.mkdirSync(path.dirname(target), { recursive: true });
+		fs.writeFileSync(target, render(page));
+	}
+}
+
+// The sidebar, in reading order. A page the language adds that is not named
+// here still appears, under "More", rather than being left unreachable.
+const groups = [
+	['Start here', [['README.md', 'Overview'], ['docs/why.md'], ['docs/install.md', 'Install']]],
+	['A tour of Sword', [['docs/tour.md', 'Introduction', true]]],
+	['Guides', [['docs/concurrency.md'], ['docs/http.md', 'HTTP servers'], ['docs/testing.md']]],
+	['Reference', [['docs/reference.md', 'Language reference'], ['docs/grammar.md']]],
+	['Project', [['docs/roadmap.md'], ['CHANGELOG.md', 'Changelog']]],
+];
+const placed = new Set();
+const sidebar = groups.map(([label, entries]) => ({
+	label,
+	items: entries.flatMap(([file, name, expand]) => {
+		const doc = docs.get(file);
+		if (!doc) return [];
+		placed.add(file);
+		const [first, ...rest] = doc.pages;
+		const items = [{ label: name ?? doc.title, slug: first.slug }];
+		if (expand) items.push(...rest.map((pg) => ({ label: pg.title, slug: pg.slug })));
+		return items;
+	}),
+}));
+const more = [...docs.values()].filter((d) => !placed.has(d.file));
+if (more.length) sidebar.push({ label: 'More', items: more.map((d) => ({ label: d.title, slug: d.pages[0].slug })) });
+
+const sha = git(dir, 'rev-parse', 'HEAD');
+fs.mkdirSync(state, { recursive: true });
+fs.writeFileSync(
+	path.join(state, 'site.json'),
+	JSON.stringify(
+		{ ref, sha, version, releaseName, grammar: path.join(dir, 'editors/vscode/syntaxes/sword.tmLanguage.json'), sidebar },
+		null,
+		'\t',
+	),
+);
+const count = [...docs.values()].reduce((n, d) => n + d.pages.length, 0);
+console.log(`docs: ${count} pages from ${files.length} files of swordlang/sword ${ref} (${sha.slice(0, 7)}), ${version} ${releaseName}`);

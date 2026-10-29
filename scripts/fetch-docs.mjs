@@ -41,6 +41,14 @@ const releaseName = versionH.match(/SWORD_RELEASE_NAME "([^"]+)"/)[1];
 // documentation yet, and the design notes kept beside the docs never are.
 const files = git(dir, 'ls-files', 'README.md', 'CHANGELOG.md', 'docs/*.md').split('\n').filter(Boolean);
 
+// Everything a page may link to on GitHub: the tracked files and the
+// directories that hold them.
+const tracked = new Set();
+for (const f of git(dir, 'ls-files').split('\n').filter(Boolean)) {
+	for (let p = f; p !== '.'; p = path.posix.dirname(p)) tracked.add(p);
+}
+const broken = [];
+
 function slugOf(file) {
 	if (file === 'README.md') return '';
 	if (file === 'CHANGELOG.md') return 'changelog';
@@ -142,6 +150,7 @@ function rewriteLinks(text, page) {
 		const [p, anchor = ''] = target.split('#');
 		const file = path.posix.normalize(path.posix.join(base, p));
 		if (docs.has(file)) return `](${href(page.slug, file, anchor)})`;
+		if (!tracked.has(file.replace(/\/$/, ''))) broken.push(`${page.file}: ${target}`);
 		return `](${repo}/blob/${ref}/${file}${anchor ? `#${anchor}` : ''})`;
 	});
 }
@@ -223,13 +232,17 @@ function render(page) {
 	return front.join('\n') + body.join('\n').replace(/^\n+/, '');
 }
 
+const rendered = [...docs.values()].flatMap((doc) => doc.pages.map((page) => [page, render(page)]));
+// A link to a file the language does not have would ship as a 404 on GitHub.
+if (broken.length) {
+	console.error(`docs: links to files that are not in swordlang/sword ${ref}:\n  ${broken.join('\n  ')}`);
+	process.exit(1);
+}
 fs.rmSync(out, { recursive: true, force: true });
-for (const doc of docs.values()) {
-	for (const page of doc.pages) {
-		const target = path.join(out, page.slug === '' ? 'index.md' : `${page.slug}.md`);
-		fs.mkdirSync(path.dirname(target), { recursive: true });
-		fs.writeFileSync(target, render(page));
-	}
+for (const [page, text] of rendered) {
+	const target = path.join(out, page.slug === '' ? 'index.md' : `${page.slug}.md`);
+	fs.mkdirSync(path.dirname(target), { recursive: true });
+	fs.writeFileSync(target, text);
 }
 
 // The tour has no parts of its own; these exist only so that its twenty-odd
@@ -282,7 +295,15 @@ fs.mkdirSync(state, { recursive: true });
 fs.writeFileSync(
 	path.join(state, 'site.json'),
 	JSON.stringify(
-		{ ref, sha, version, releaseName, grammar: path.join(dir, 'editors/vscode/syntaxes/sword.tmLanguage.json'), sidebar },
+		{
+			ref,
+			sha,
+			version,
+			releaseName,
+			grammar: path.join(dir, 'editors/vscode/syntaxes/sword.tmLanguage.json'),
+			sidebar,
+			pages: rendered.map(([page]) => page.slug),
+		},
 		null,
 		'\t',
 	),

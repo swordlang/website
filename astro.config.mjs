@@ -9,8 +9,28 @@ const site = JSON.parse(fs.readFileSync(new URL('./.sword/site.json', import.met
 // The same grammar the editors use, so the site colours Sword the way they do.
 const sword = { ...JSON.parse(fs.readFileSync(site.grammar, 'utf8')), name: 'sword' };
 
+// The release is published at the root and develop under next/. SITE_BASE is
+// where GitHub Pages serves the site from, empty once it has its own domain.
+// scripts/build.mjs passes SWORD_VERSIONS, what each version holds, so that a
+// page can link to itself in the other; a single build knows only itself.
+const next = process.env.SITE_VERSION === 'next';
+const root = (process.env.SITE_BASE || '').replace(/\/+$/, '');
+const known = process.env.SWORD_VERSIONS
+	? JSON.parse(fs.readFileSync(process.env.SWORD_VERSIONS, 'utf8'))
+	: { [next ? 'next' : 'release']: site };
+const versions = {
+	current: next ? 'next' : 'release',
+	list: [
+		known.release && { id: 'release', label: `${known.release.version} ${known.release.releaseName}`, pages: known.release.pages, home: `${root}/` },
+		known.next && { id: 'next', label: 'Next', pages: known.next.pages, home: `${root}/next/` },
+	].filter(Boolean),
+};
+
 export default defineConfig({
-	site: 'https://swordlang.com',
+	site: process.env.SITE_ORIGIN || 'https://swordlang.com',
+	base: next ? `${root}/next` : root || '/',
+	outDir: next ? './dist/next' : './dist',
+	vite: { define: { __SWORD_VERSIONS__: JSON.stringify(versions) } },
 	integrations: [
 		starlight({
 			title: 'Sword',
@@ -19,7 +39,13 @@ export default defineConfig({
 			logo: { light: './src/assets/logo.svg', dark: './src/assets/logo-dark.svg' },
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/swordlang/sword' }],
 			sidebar: site.sidebar,
-			components: { SocialIcons: './src/components/SocialIcons.astro' },
+			// Unreleased work is not what a search engine should send anyone to.
+			head: next ? [{ tag: 'meta', attrs: { name: 'robots', content: 'noindex' } }] : [],
+			components: {
+				Banner: './src/components/Banner.astro',
+				SiteTitle: './src/components/SiteTitle.astro',
+				SocialIcons: './src/components/SocialIcons.astro',
+			},
 			customCss: [
 				'@fontsource/inter/400.css',
 				'@fontsource/inter/500.css',

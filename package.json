@@ -6,7 +6,8 @@
     "fetch-docs": "node scripts/fetch-docs.mjs",
     "dev": "npm run fetch-docs && astro dev",
     "build": "npm run fetch-docs && astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "build:site": "node scripts/build.mjs"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.42.7",

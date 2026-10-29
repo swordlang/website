@@ -37,6 +37,10 @@ switches between the two, to the same page where the other version has it.
 anchor on every page; a broken one fails the build, and so does a link from the
 documentation to a file `swordlang/sword` does not have.
 
-The workflow runs on a push to `main` here, once a day, when
-`swordlang/sword` sends the `repository_dispatch` event `docs`, and by hand. On
-a pull request it builds and checks without publishing.
+The workflow runs on a push to `main` here, when `swordlang/sword` sends the
+`repository_dispatch` event `docs` (it does on every push that changes what the
+site is made from), and by hand. It also runs every hour, in case that event
+was missed, but builds then only if `swordlang/sword` or this repository has
+moved since the build that is live: each build publishes the commits it was
+made from as `build.json`, and `scripts/changed.mjs` compares them. On a pull
+request it builds and checks without publishing.

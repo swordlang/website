@@ -37,4 +37,12 @@ fs.writeFileSync(versionsFile, JSON.stringify(known));
 astro('release');
 fetchDocs(refs.next);
 astro('next');
+
+// What this build was made from, so that a scheduled run can tell whether
+// anything has changed since (scripts/changed.mjs).
+const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+fs.writeFileSync(
+	path.join(root, 'dist/build.json'),
+	`${JSON.stringify({ site: commit, release: known.release.sha, next: known.next.sha }, null, '\t')}\n`,
+);
 run('scripts/check-links.mjs', ['dist', process.env.SITE_BASE || '']);

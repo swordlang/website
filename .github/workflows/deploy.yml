@@ -5,7 +5,8 @@
 #
 # The documentation lives in the other repository, so a change there has to
 # start a build here: it sends the repository_dispatch event "docs". The
-# daily run catches anything that event missed.
+# hourly run catches anything that event missed, and builds only when
+# swordlang/sword or this repository has moved since the live build.
 name: Deploy
 
 on:
@@ -15,7 +16,7 @@ on:
   repository_dispatch:
     types: [docs]
   schedule:
-    - cron: "23 5 * * *"
+    - cron: "23 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -27,7 +28,31 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.check.outputs.build }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'schedule'
+      - id: pages
+        if: github.event_name == 'schedule'
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - id: check
+        run: |
+          if [ "$EVENT" = schedule ]; then
+            echo "build=$(node scripts/changed.mjs "$SITE")" >> "$GITHUB_OUTPUT"
+          else
+            echo build=true >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          EVENT: ${{ github.event_name }}
+          SITE: ${{ steps.pages.outputs.base_url }}
+
   build:
+    needs: changed
+    if: needs.changed.outputs.build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

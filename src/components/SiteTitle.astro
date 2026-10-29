@@ -1,0 +1,78 @@
+---
+// The logo, and beside it which version of the documentation is being read.
+import Default from '@astrojs/starlight/components/SiteTitle.astro';
+import { Icon } from '@astrojs/starlight/components';
+import { versions, samePage } from '../versions.mjs';
+
+const { id } = Astro.locals.starlightRoute;
+---
+
+<Default />
+{
+	versions.list.length > 1 && (
+		<sw-version>
+			<label>
+				<span class="sr-only">Documentation version</span>
+				<select autocomplete="off">
+					{versions.list.map((v) => (
+						<option value={samePage(v, id) ?? v.home} selected={v.id === versions.current}>
+							{v.label}
+						</option>
+					))}
+				</select>
+				<Icon name="down-caret" class="caret" />
+			</label>
+		</sw-version>
+	)
+}
+
+<script>
+	customElements.define(
+		'sw-version',
+		class extends HTMLElement {
+			connectedCallback() {
+				this.querySelector('select')?.addEventListener('change', (e) => {
+					if (e.currentTarget instanceof HTMLSelectElement) location.href = e.currentTarget.value;
+				});
+			}
+		},
+	);
+</script>
+
+<style>
+	sw-version {
+		display: flex;
+		margin-inline-start: 0.75rem;
+	}
+	label {
+		position: relative;
+		display: flex;
+		align-items: center;
+		color: var(--sl-color-gray-3);
+	}
+	label:hover {
+		color: var(--sl-color-white);
+	}
+	select {
+		appearance: none;
+		border: 1px solid var(--sl-color-hairline);
+		border-radius: 6px;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: var(--sl-text-xs);
+		font-weight: 500;
+		padding: 0.125rem 1.5rem 0.125rem 0.5rem;
+		cursor: pointer;
+	}
+	option {
+		background-color: var(--sl-color-bg-nav);
+		color: var(--sl-color-gray-1);
+	}
+	.caret {
+		position: absolute;
+		inset-inline-end: 0.25rem;
+		font-size: 1rem;
+		pointer-events: none;
+	}
+</style>

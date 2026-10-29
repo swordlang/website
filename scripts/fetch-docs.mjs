@@ -295,7 +295,15 @@ fs.mkdirSync(state, { recursive: true });
 fs.writeFileSync(
 	path.join(state, 'site.json'),
 	JSON.stringify(
-		{ ref, sha, version, releaseName, grammar: path.join(dir, 'editors/vscode/syntaxes/sword.tmLanguage.json'), sidebar },
+		{
+			ref,
+			sha,
+			version,
+			releaseName,
+			grammar: path.join(dir, 'editors/vscode/syntaxes/sword.tmLanguage.json'),
+			sidebar,
+			pages: rendered.map(([page]) => page.slug),
+		},
 		null,
 		'\t',
 	),

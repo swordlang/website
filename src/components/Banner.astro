@@ -1,0 +1,49 @@
+---
+// Every page of next/ says so, and leads to the same page as released.
+import Default from '@astrojs/starlight/components/Banner.astro';
+import { versions, samePage } from '../versions.mjs';
+
+const { id } = Astro.locals.starlightRoute;
+const release = versions.list.find((v) => v.id === 'release');
+const there = release && samePage(release, id);
+---
+
+{
+	versions.current === 'next' ? (
+		<div class="sw-next" data-pagefind-ignore>
+			This describes unreleased work, on the <code>develop</code> branch, and may change before the next release.
+			{release && there && <a href={there}>Read this page for {release.label}</a>}
+			{release && !there && (
+				<>
+					{' '}This page is not in {release.label}. <a href={release.home}>Its documentation</a>
+				</>
+			)}
+		</div>
+	) : (
+		<Default />
+	)
+}
+
+<style>
+	.sw-next {
+		padding: 0.5rem var(--sl-nav-pad-x);
+		background: var(--sw-current-bg);
+		color: var(--sw-current-fg);
+		font-size: var(--sl-text-sm);
+		line-height: var(--sl-line-height-headings);
+		text-align: center;
+		text-wrap: balance;
+	}
+	.sw-next code {
+		font-size: 0.9em;
+	}
+	.sw-next a {
+		margin-inline-start: 0.25rem;
+		color: inherit;
+		font-weight: 600;
+		white-space: nowrap;
+	}
+	.sw-next a::after {
+		content: ' →';
+	}
+</style>

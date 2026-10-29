@@ -17,9 +17,26 @@ repository holds how the pages look, the home page, and the build.
 npm ci
 npm run dev        # http://localhost:4321
 npm run build      # the site, in dist/
+npm run build:site # the site as published, with both versions
 ```
 
 Both fetch `swordlang/sword` at `main` first. `SWORD_REF=develop` builds from
 another branch or tag, and `SWORD_DIR=../sword` builds from a checkout on disk,
 which is how a change to the documentation is seen on the site before it is
 pushed. Only files git tracks there are published.
+
+## Publishing
+
+The site is published on GitHub Pages by `.github/workflows/deploy.yml`. It
+holds two versions of the documentation: the latest release, `swordlang/sword`
+at `main`, at the root, and the work not yet released, at `develop`, under
+`/next/`. Every page of `/next/` says so, and a selector beside the logo
+switches between the two, to the same page where the other version has it.
+
+`npm run build:site` builds both into `dist/` and then checks every link and
+anchor on every page; a broken one fails the build, and so does a link from the
+documentation to a file `swordlang/sword` does not have.
+
+The workflow runs on a push to `main` here, once a day, when
+`swordlang/sword` sends the `repository_dispatch` event `docs`, and by hand. On
+a pull request it builds and checks without publishing.

@@ -79,9 +79,15 @@ function* prose(lines) {
 	}
 }
 
-// Splits a document into its title and the pages it becomes. The tour is read
-// a section at a time, so each `##` of it is a page of its own; every other
-// document is one page with its own table of contents.
+// The documents read a section at a time: the tour by its `##`, the reference
+// by its `##` and its standard library a package at a time (`### std/io`).
+const cutsOf = {
+	'docs/tour.md': (h) => h.depth === 2,
+	'docs/reference.md': (h) => h.depth === 2 || (h.depth === 3 && h.text.startsWith('std/')),
+};
+
+// Splits a document into its title and the pages it becomes: one per cut
+// above, or the whole document as one page with its own table of contents.
 function paginate(file) {
 	const lines = read(file).split('\n');
 	let title = null;
@@ -97,8 +103,7 @@ function paginate(file) {
 	for (const h of heads) if (h.line > title.line) h.line--;
 
 	const slug = slugOf(file);
-	const split = file === 'docs/tour.md';
-	const cuts = split ? heads.filter((h) => h.depth === 2) : [];
+	const cuts = heads.filter(cutsOf[file] ?? (() => false));
 	const pages = [];
 	const pageSlugger = new GithubSlugger();
 	const starts = [0, ...cuts.map((h) => h.line)];
@@ -108,7 +113,7 @@ function paginate(file) {
 		const cut = p > 0 ? cuts[p - 1] : null;
 		pages.push({
 			file,
-			slug: cut ? `${slug}/${pageSlugger.slug(cut.text)}` : slug,
+			slug: cut ? `${slug}/${cut.text.startsWith('std/') ? cut.text : pageSlugger.slug(cut.text)}` : slug,
 			title: cut ? cut.text : title.text,
 			lines: lines.slice(cut ? from + 1 : from, to),
 			start: from,
@@ -124,8 +129,7 @@ function paginate(file) {
 	for (const h of heads) {
 		const page = pages.findLast((pg) => pg.start <= h.line);
 		const id = docSlugger.slug(h.text);
-		const isCut = split && h.depth === 2;
-		anchors.set(id, { slug: page.slug, id: isCut ? '' : perPage.get(page).slug(h.text) });
+		anchors.set(id, { slug: page.slug, id: cuts.includes(h) ? '' : perPage.get(page).slug(h.text) });
 	}
 	return { file, title: title.text, pages, anchors };
 }
@@ -146,7 +150,9 @@ function href(from, file, anchor) {
 function rewriteLinks(text, page) {
 	const base = path.posix.dirname(page.file);
 	return text.replace(/\]\(([^()\s]+)\)/g, (whole, target) => {
-		if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith('#') || target.startsWith('/')) return whole;
+		if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith('/')) return whole;
+		// A section of a split document may have become another page.
+		if (target.startsWith('#')) return docs.get(page.file).pages.length > 1 ? `](${href(page.slug, page.file, target.slice(1))})` : whole;
 		const [p, anchor = ''] = target.split('#');
 		const file = path.posix.normalize(path.posix.join(base, p));
 		if (docs.has(file)) return `](${href(page.slug, file, anchor)})`;
@@ -272,6 +278,25 @@ function tourItems(doc) {
 }
 let tour = null;
 
+// The reference is two lists: the language, section by section, and the
+// standard library, package by package.
+function referenceItems(doc) {
+	const [intro, ...sections] = doc.pages;
+	const std = sections.filter((pg) => pg.title === 'Standard library' || pg.title.startsWith('std/'));
+	const lang = sections.filter((pg) => !std.includes(pg));
+	const [stdIntro, ...packages] = std;
+	reference = {
+		language: { label: 'Language reference', slugs: lang.map((pg) => pg.slug) },
+		library: { label: 'Standard library', slugs: packages.map((pg) => pg.slug) },
+	};
+	const items = (pages) => pages.map((pg) => ({ label: pg.title, slug: pg.slug }));
+	return [
+		{ label: 'Language reference', collapsed: true, items: [{ label: 'Overview', slug: intro.slug }, ...items(lang)] },
+		{ label: 'Standard library', collapsed: true, items: [...(stdIntro ? [{ label: 'Overview', slug: stdIntro.slug }] : []), ...items(packages)] },
+	];
+}
+let reference = null;
+
 // The sidebar, in reading order. A page the language adds that is not named
 // here still appears, under "More", rather than being left unreachable; the
 // README is the home page, reached from the logo.
@@ -290,6 +315,7 @@ const sidebar = groups.map(([label, entries]) => ({
 		if (!doc) return [];
 		placed.add(file);
 		if (file === 'docs/tour.md') return tourItems(doc);
+		if (file === 'docs/reference.md') return referenceItems(doc);
 		return [{ label: name ?? doc.title, slug: doc.pages[0].slug }];
 	}),
 }));
@@ -309,6 +335,7 @@ fs.writeFileSync(
 			grammar: path.join(dir, 'editors/vscode/syntaxes/sword.tmLanguage.json'),
 			sidebar,
 			tour,
+			reference,
 			pages: rendered.map(([page]) => page.slug),
 		},
 		null,

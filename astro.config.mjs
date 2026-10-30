@@ -30,7 +30,7 @@ export default defineConfig({
 	site: process.env.SITE_ORIGIN || 'https://swordlang.com',
 	base: next ? `${root}/next` : root || '/',
 	outDir: next ? './dist/next' : './dist',
-	vite: { define: { __SWORD_VERSIONS__: JSON.stringify(versions) } },
+	vite: { define: { __SWORD_VERSIONS__: JSON.stringify(versions), __SWORD_TOUR__: JSON.stringify(site.tour) } },
 	integrations: [
 		starlight({
 			title: 'Sword',
@@ -41,11 +41,14 @@ export default defineConfig({
 			sidebar: site.sidebar,
 			// The site's own 404 is src/pages/404.astro.
 			disable404Route: true,
+			routeMiddleware: './src/route-data.mjs',
 			// Unreleased work is not what a search engine should send anyone to.
 			head: next ? [{ tag: 'meta', attrs: { name: 'robots', content: 'noindex' } }] : [],
 			components: {
 				Banner: './src/components/Banner.astro',
 				Head: './src/components/Head.astro',
+				PageTitle: './src/components/PageTitle.astro',
+				Pagination: './src/components/Pagination.astro',
 				SiteTitle: './src/components/SiteTitle.astro',
 				SocialIcons: './src/components/SocialIcons.astro',
 			},

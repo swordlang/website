@@ -1,0 +1,104 @@
+---
+// In the tour, the way on is one large card that says where it leads: deeper
+// into this part, into the next one, or out of the tour into the guides.
+// Everywhere else, Starlight's own links.
+import Default from '@astrojs/starlight/components/Pagination.astro';
+
+const { tour, pagination } = Astro.locals.starlightRoute;
+const { prev, next } = pagination;
+
+let where = '';
+let count = '';
+if (tour && next) {
+	const here = tour.here;
+	const part = here ? here.part : -1;
+	const at = here ? here.at : -1;
+	if (here && at + 1 < tour.sizes[part]) {
+		where = at + 2 === tour.sizes[part] ? `last of ${tour.parts[part]}` : tour.parts[part];
+		count = `${here.index + 1} of ${tour.total}`;
+	} else if (part + 1 < tour.parts.length) {
+		where = `Part ${part + 2} of ${tour.parts.length}: ${tour.parts[part + 1]}`;
+		count = `${(here ? here.index : 0) + 1} of ${tour.total}`;
+	} else {
+		where = 'after the tour';
+	}
+}
+---
+
+{
+	tour ? (
+		<nav class="sw-onward print:hidden" aria-label="Tour">
+			{next && (
+				<a href={next.href} rel="next" class="sw-next-card">
+					<span>
+						<span class="sw-where">Next · {where}</span>
+						<span class="sw-title">{next.label}</span>
+						{count && <span class="sw-count">{count}</span>}
+					</span>
+					<span class="sw-arrow" aria-hidden="true">
+						→
+					</span>
+				</a>
+			)}
+			{prev && (
+				<a href={prev.href} rel="prev" class="sw-prev">
+					← {prev.label}
+				</a>
+			)}
+		</nav>
+	) : (
+		<Default />
+	)
+}
+
+<style>
+	.sw-onward {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		margin-top: 3rem;
+	}
+	.sw-next-card {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 1rem;
+		padding: 1.25rem 1.5rem;
+		border: 1px solid var(--sl-color-hairline);
+		border-radius: 12px;
+		background: var(--sl-color-black);
+		color: var(--sl-color-white);
+		text-decoration: none;
+	}
+	.sw-next-card:hover {
+		border-color: var(--sl-color-accent);
+	}
+	.sw-next-card > span:first-child {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+	.sw-where,
+	.sw-count {
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-3);
+	}
+	.sw-title {
+		font-size: var(--sl-text-h4);
+		font-weight: 700;
+		letter-spacing: -0.02em;
+	}
+	.sw-arrow {
+		font-size: 1.6rem;
+		color: var(--sl-color-accent);
+	}
+	.sw-prev {
+		align-self: flex-start;
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-3);
+		text-decoration: none;
+	}
+	.sw-prev:hover {
+		color: var(--sl-color-white);
+	}
+</style>

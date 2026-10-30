@@ -1,0 +1,90 @@
+---
+// A tour page's title, under the part it belongs to and a bar of the whole
+// tour, filled up to here.
+import Default from '@astrojs/starlight/components/PageTitle.astro';
+
+const { tour } = Astro.locals.starlightRoute;
+const here = tour?.here;
+let n = 0;
+const bar =
+	here &&
+	tour.sizes.map((size) =>
+		Array.from({ length: size }, () => {
+			n++;
+			return n < here.index ? 'done' : n === here.index ? 'here' : 'ahead';
+		}),
+	);
+---
+
+{
+	here && (
+		<div class="sw-where">
+			<p>
+				<span>
+					<strong>A tour of Sword</strong> · Part {here.part + 1} of {tour.parts.length} · {tour.parts[here.part]}
+				</span>
+				<span class="sw-at">
+					{here.index} / {tour.total}
+				</span>
+			</p>
+			<div class="sw-bar" role="img" aria-label={`Section ${here.index} of ${tour.total}`}>
+				{
+					bar.map((part, i) => (
+						<div style={`flex: ${tour.sizes[i]}`}>
+							{part.map((state) => (
+								<span class={state} />
+							))}
+						</div>
+					))
+				}
+			</div>
+		</div>
+	)
+}
+<Default />
+
+<style>
+	.sw-where {
+		display: flex;
+		flex-direction: column;
+		gap: 0.625rem;
+		margin-top: 1rem;
+	}
+	.sw-where p {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 1rem;
+		margin: 0;
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-3);
+	}
+	.sw-where strong {
+		font-weight: 600;
+		color: var(--sw-current-fg);
+	}
+	.sw-at {
+		font-family: var(--__sl-font-mono);
+		white-space: nowrap;
+	}
+	.sw-bar {
+		display: flex;
+		gap: 6px;
+	}
+	.sw-bar div {
+		display: flex;
+		gap: 2px;
+	}
+	.sw-bar span {
+		flex: 1;
+		height: 6px;
+		border-radius: 3px;
+		background: var(--sl-color-hairline);
+	}
+	.sw-bar .done {
+		background: var(--sl-color-accent);
+	}
+	.sw-bar .here {
+		background: var(--sl-color-accent-high);
+	}
+</style>

@@ -111,3 +111,19 @@ h1#_top {
 .sl-markdown-content .sw-run-quiet::before {
 	margin-bottom: 0;
 }
+
+/* A tour part's size in the sidebar, and on a tour page where the reader is
+   in the part being read (src/route-data.mjs). */
+.sidebar-content .sl-badge.sw-count {
+	padding: 0;
+	border: 0;
+	background: none;
+	font-family: var(--__sl-font-mono);
+	font-size: 0.75rem;
+	font-weight: 400;
+	color: var(--sl-color-gray-4);
+}
+.sidebar-content .sl-badge.sw-count-here {
+	font-weight: 600;
+	color: var(--sw-current-fg);
+}

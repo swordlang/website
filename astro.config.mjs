@@ -39,6 +39,8 @@ export default defineConfig({
 			logo: { light: './src/assets/logo.svg', dark: './src/assets/logo-dark.svg' },
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/swordlang/sword' }],
 			sidebar: site.sidebar,
+			// The site's own 404 is src/pages/404.astro.
+			disable404Route: true,
 			// Unreleased work is not what a search engine should send anyone to.
 			head: next ? [{ tag: 'meta', attrs: { name: 'robots', content: 'noindex' } }] : [],
 			components: {

@@ -1,0 +1,149 @@
+---
+// The page for a link that leads nowhere: the search, and three ways back in.
+// GitHub Pages serves the root's 404.html for every missing path, /next/ ones
+// included, so the links follow the version the reader was in.
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import { versions } from '../versions.mjs';
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const other = versions.list.find((v) => v.id !== versions.current);
+const next = versions.list.find((v) => v.id === 'next');
+const ways = [
+	{ href: 'tour/', title: 'A tour of Sword', text: 'The language, start to finish, every program run.' },
+	{ href: 'install/', title: 'Install', text: 'Get shield and build your first program.' },
+	{ href: 'reference/', title: 'Language reference', text: 'Every construct, as it is today.' },
+];
+---
+
+<StarlightPage frontmatter={{ title: 'This page isn’t here.', template: 'splash', pagefind: false }} hasSidebar={false}>
+	<sw-not-found data-base={base} data-next={next && versions.current !== 'next' ? next.home : undefined}>
+		<p>
+			It may have moved when the documentation changed, or the link may be mistyped. Search for what you were
+			after, or start from one of these.
+		</p>
+		<button type="button" class="sw-search">
+			<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+			Search the documentation
+		</button>
+		<nav aria-label="Ways back in" class="sw-ways not-content">
+			{
+				ways.map((w) => (
+					<a href={base + w.href} data-path={w.href}>
+						<strong>{w.title} →</strong>
+						<span>{w.text}</span>
+					</a>
+				))
+			}
+		</nav>
+		{
+			other && (
+				<p class="sw-other">
+					{other.id === 'next' ? (
+						<>Looking for something not released yet? It may be in <a href={other.home}>the documentation of develop</a>.</>
+					) : (
+						<>Looking for the released language? <a href={other.home}>The documentation of {other.label}</a>.</>
+					)}
+				</p>
+			)
+		}
+	</sw-not-found>
+</StarlightPage>
+
+<script>
+	customElements.define(
+		'sw-not-found',
+		class extends HTMLElement {
+			connectedCallback() {
+				this.querySelector('.sw-search')?.addEventListener('click', () =>
+					document.querySelector<HTMLButtonElement>('site-search button[data-open-modal]')?.click(),
+				);
+				const next = this.dataset.next;
+				if (next && location.pathname.startsWith(next)) {
+					for (const a of this.querySelectorAll<HTMLAnchorElement>('a[data-path]')) a.href = next + a.dataset.path;
+				}
+			}
+		},
+	);
+</script>
+
+<style is:global>
+	h1#_top::before {
+		content: '404 · not found';
+		display: block;
+		margin-bottom: 0.75rem;
+		font-family: var(--__sl-font-mono);
+		font-size: var(--sl-text-sm);
+		font-weight: 500;
+		letter-spacing: 0;
+		color: var(--sw-current-fg);
+	}
+</style>
+
+<style>
+	sw-not-found {
+		display: flex;
+		flex-direction: column;
+		gap: 1.75rem;
+		max-width: 45rem;
+	}
+	p {
+		margin: 0;
+		color: var(--sl-color-gray-2);
+	}
+	.sw-search {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		width: 100%;
+		min-height: 3rem;
+		padding: 0 1rem;
+		border: 1px solid var(--sl-color-gray-4);
+		border-radius: 10px;
+		background: var(--sl-color-black);
+		color: var(--sl-color-gray-3);
+		font: inherit;
+		text-align: start;
+		cursor: pointer;
+	}
+	.sw-search:hover {
+		border-color: var(--sl-color-gray-2);
+	}
+	.sw-search svg {
+		width: 1rem;
+		height: 1rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 2;
+		stroke-linecap: round;
+	}
+	.sw-ways {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+		gap: 1rem;
+	}
+	.sw-ways a {
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+		padding: 1.25rem;
+		border: 1px solid var(--sl-color-hairline);
+		border-radius: 12px;
+		background: var(--sl-color-black);
+		color: var(--sl-color-white);
+		text-decoration: none;
+	}
+	.sw-ways a:hover {
+		border-color: var(--sl-color-accent);
+	}
+	.sw-ways span {
+		font-size: var(--sl-text-sm);
+		line-height: 1.5;
+		color: var(--sl-color-gray-3);
+	}
+	.sw-other {
+		font-size: var(--sl-text-sm);
+	}
+	.sw-other a {
+		font-weight: 600;
+	}
+</style>

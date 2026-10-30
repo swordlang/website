@@ -1,9 +1,9 @@
 ---
 // A tour page's title, under the part it belongs to and a bar of the whole
-// tour, filled up to here.
+// tour, filled up to here; a reference page's, under its place in its list.
 import Default from '@astrojs/starlight/components/PageTitle.astro';
 
-const { tour } = Astro.locals.starlightRoute;
+const { tour, series } = Astro.locals.starlightRoute;
 const here = tour?.here;
 let n = 0;
 const bar =
@@ -41,9 +41,25 @@ const bar =
 		</div>
 	)
 }
+{
+	series && (
+		<p class="sw-series">
+			<strong>{series.label}</strong> · {series.index} of {series.total}
+		</p>
+	)
+}
 <Default />
 
 <style>
+	.sw-series {
+		margin: 1rem 0 0;
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-3);
+	}
+	.sw-series strong {
+		font-weight: 600;
+		color: var(--sw-current-fg);
+	}
 	.sw-where {
 		display: flex;
 		flex-direction: column;

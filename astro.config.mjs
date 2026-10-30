@@ -30,7 +30,7 @@ export default defineConfig({
 	site: process.env.SITE_ORIGIN || 'https://swordlang.com',
 	base: next ? `${root}/next` : root || '/',
 	outDir: next ? './dist/next' : './dist',
-	vite: { define: { __SWORD_VERSIONS__: JSON.stringify(versions), __SWORD_TOUR__: JSON.stringify(site.tour) } },
+	vite: { define: { __SWORD_VERSIONS__: JSON.stringify(versions), __SWORD_TOUR__: JSON.stringify(site.tour), __SWORD_REFERENCE__: JSON.stringify(site.reference) } },
 	integrations: [
 		starlight({
 			title: 'Sword',

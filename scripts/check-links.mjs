@@ -46,8 +46,9 @@ let checked = 0;
 for (const [file, html] of pages) {
 	const rel = path.relative(dist, file).split(path.sep).join('/');
 	const url = `${base}/${rel.endsWith('index.html') ? rel.slice(0, -'index.html'.length) : rel}`;
-	for (const m of html.matchAll(/\s(?:href|src)="([^"]*)"/g)) {
-		const link = unescape(m[1]);
+	// A share card's address is absolute, so only its path is checked.
+	const cards = [...html.matchAll(/<meta property="og:image" content="([^"]*)"/g)].map((m) => new URL(unescape(m[1])).pathname);
+	for (const link of [...[...html.matchAll(/\s(?:href|src)="([^"]*)"/g)].map((m) => unescape(m[1])), ...cards]) {
 		if (!link || link.startsWith('//') || /^[a-z][a-z0-9+.-]*:/i.test(link)) continue;
 		const target = new URL(link, `https://site${url}`);
 		const p = decodeURIComponent(target.pathname);

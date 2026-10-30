@@ -52,7 +52,9 @@ const broken = [];
 function slugOf(file) {
 	if (file === 'README.md') return '';
 	if (file === 'CHANGELOG.md') return 'changelog';
-	return file.replace(/^docs\//, '').replace(/\.md$/, '');
+	// A directory's README is what GitHub shows for the directory, and here it
+	// is the directory's page: docs/examples/README.md is /examples/.
+	return file.replace(/^docs\//, '').replace(/(^|\/)README\.md$/, '').replace(/\.md$/, '');
 }
 
 // The text a heading is slugged from, as GitHub and Astro see it once rendered.
@@ -297,12 +299,30 @@ function referenceItems(doc) {
 }
 let reference = null;
 
+// The examples are listed in the order their index links them, which is the
+// order Sword by example means them to be read in; one it does not link still
+// gets a place, at the end.
+function exampleItems(doc) {
+	const base = path.posix.dirname(doc.file);
+	const linked = [...read(doc.file).matchAll(/\]\(([^()\s#]+\.md)\)/g)]
+		.map((m) => path.posix.normalize(path.posix.join(base, m[1])))
+		.filter((f) => path.posix.dirname(f) === base && docs.has(f));
+	const rest = [...docs.keys()].filter((f) => path.posix.dirname(f) === base && f !== doc.file);
+	const order = [...new Set([...linked, ...rest])];
+	for (const f of order) placed.add(f);
+	return [
+		{ label: 'Overview', slug: doc.pages[0].slug },
+		...order.map((f) => ({ label: docs.get(f).title, slug: docs.get(f).pages[0].slug })),
+	];
+}
+
 // The sidebar, in reading order. A page the language adds that is not named
 // here still appears, under "More", rather than being left unreachable; the
 // README is the home page, reached from the logo.
 const groups = [
 	['Start here', [['docs/why.md'], ['docs/install.md', 'Install']]],
 	['A tour of Sword', [['docs/tour.md']]],
+	['Sword by example', [['docs/examples/README.md']]],
 	['Guides', [['docs/concurrency.md'], ['docs/http.md', 'HTTP servers'], ['docs/testing.md']]],
 	['Reference', [['docs/reference.md', 'Language reference'], ['docs/grammar.md']]],
 	['Project', [['docs/roadmap.md'], ['CHANGELOG.md', 'Changelog']]],
@@ -316,9 +336,11 @@ const sidebar = groups.map(([label, entries]) => ({
 		placed.add(file);
 		if (file === 'docs/tour.md') return tourItems(doc);
 		if (file === 'docs/reference.md') return referenceItems(doc);
+		if (file === 'docs/examples/README.md') return exampleItems(doc);
 		return [{ label: name ?? doc.title, slug: doc.pages[0].slug }];
 	}),
-}));
+	// A group whose documents a version does not have yet is left out of it.
+})).filter((group) => group.items.length);
 const more = [...docs.values()].filter((d) => !placed.has(d.file));
 if (more.length) sidebar.push({ label: 'More', items: more.map((d) => ({ label: d.title, slug: d.pages[0].slug })) });
 

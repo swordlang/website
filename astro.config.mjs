@@ -43,6 +43,7 @@ export default defineConfig({
 			head: next ? [{ tag: 'meta', attrs: { name: 'robots', content: 'noindex' } }] : [],
 			components: {
 				Banner: './src/components/Banner.astro',
+				Head: './src/components/Head.astro',
 				SiteTitle: './src/components/SiteTitle.astro',
 				SocialIcons: './src/components/SocialIcons.astro',
 			},

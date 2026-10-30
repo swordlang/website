@@ -263,8 +263,14 @@ function tourItems(doc) {
 		const at = tourParts.findIndex(([, titles]) => titles.includes(pg.title));
 		parts[at === -1 ? parts.length - 1 : at].items.push({ label: pg.title, slug: pg.slug });
 	}
-	return [{ label: 'Introduction', slug: intro.slug }, ...parts.filter((p) => p.items.length)];
+	const kept = parts.filter((p) => p.items.length);
+	// Each part says how many sections it holds; on a tour page the part being
+	// read says where in it the reader is (src/route-data.mjs).
+	for (const p of kept) p.badge = { text: String(p.items.length), variant: 'default', class: 'sw-count' };
+	tour = { intro: intro.slug, parts: kept.map((p) => ({ label: p.label, slugs: p.items.map((i) => i.slug) })) };
+	return [{ label: 'Introduction', slug: intro.slug }, ...kept];
 }
+let tour = null;
 
 // The sidebar, in reading order. A page the language adds that is not named
 // here still appears, under "More", rather than being left unreachable; the
@@ -302,6 +308,7 @@ fs.writeFileSync(
 			releaseName,
 			grammar: path.join(dir, 'editors/vscode/syntaxes/sword.tmLanguage.json'),
 			sidebar,
+			tour,
 			pages: rendered.map(([page]) => page.slug),
 		},
 		null,
